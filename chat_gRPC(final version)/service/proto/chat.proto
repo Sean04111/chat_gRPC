@@ -1,0 +1,23 @@
+syntax="proto3";
+option go_package="github.com/Sean04111/chat_gRPC";
+package chat;
+message User{
+  int64 id = 1;
+  string name = 2;
+}
+message UserId{
+  int64 id =1;
+}
+message Message{
+  int64 id = 1;
+  string speakername=2;
+  string content =3;
+  string time = 4;
+}
+message MessageNum{
+  int64 messnum = 1;
+}
+service Chat{
+  rpc SendAll(Message )returns(Message);
+  rpc GetMessNum(UserId)returns(MessageNum);
+}
