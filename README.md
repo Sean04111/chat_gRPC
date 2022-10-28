@@ -39,12 +39,48 @@ service Notify{
 
 
 <br>之间的通信可以通过并发管道实现
+但是如果采用这种方案，那么客户端和服务端都需要至少有两个端口来负责简单的痛惜，显然是不现实的，所以这种方案不可取
 ### 2.使用收发服务器
-使用两个服务端，一个进行收取消息，另一个负责把消息广播 （目前还没有实践过）
+使用两个服务端，一个进行收取消息，另一个负责把消息广播 ，这个方案也要要求服务器端两个，十分麻烦
 ### 3 使用Kratos微服务框架 
 <br>详情：https://juejin.cn/post/7104264158467588133#heading-1
-## 已经完成的工作
-<br>目前基于客户端流RPC模式实现了client端向服务器端发送消息流，并且server端能够正常接受，可以选择存全局变量里，也可以选择讯数据库里<br><br>
-![K}M`5H(WO}_@LSMNDM%8YCP](https://user-images.githubusercontent.com/96430610/198402595-0c184612-1061-4d13-9a6f-8dc1892e92f3.png)
-同时方案一还在实验中......
+## 最终采用的方案
+<br>最终采用了使用mysql+grpc的通信方案，服务器端和客户端通过同时访问mysql来实现，服务器统一将客户端的信息输入数据库中，实现通信<br><br>
+<br>服务定义为<br>
+
+ ```
+ 
+ syntax="proto3";
+option go_package="github.com/Sean04111/chat_gRPC";
+package chat;
+message User{
+  int64 id = 1;
+  string name = 2;
+}
+message UserId{
+  int64 id =1;
+}
+message Message{
+  int64 id = 1;
+  string speakername=2;
+  string content =3;
+  string time = 4;
+}
+message MessageNum{
+  int64 messnum = 1;
+}
+service Chat{
+  rpc SendAll(Message )returns(Message);
+  rpc GetMessNum(UserId)returns(MessageNum);
+}
+
+ ```
+ 
+ <br>运行结果:
+ <br>
+ <br>
+<img width="574" alt="image" src="https://user-images.githubusercontent.com/96430610/198608106-8a562a04-e1ae-4de8-ae70-fa11d1a3e60d.png">
+<br>
+<br>
+虽然在这种单机版中，grpc的作用被明显弱化了，但是当此服务部署到web上时，grpc的作用就凸现出来了，所有客户把消息通过grpc统一交给服务端管理，不仅能节省很多时间，还方便管理，而服务端的总消息库又是对所有用户可见的，这也就实现了广播。
 
