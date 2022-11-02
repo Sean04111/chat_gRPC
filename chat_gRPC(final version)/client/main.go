@@ -19,6 +19,15 @@ type User struct {
 	Self       *pb.User
 }
 
+var (
+	DB_database string = "sql_news"
+	DB_username string = "sql_news"
+	DB_password string = "666"
+	DB_host     string = "121.36.131.50"
+	DB_port     string = "3306"
+)
+var Port string = ":8080"
+
 func (this *User) SaytoAll() {
 	fmt.Println("Say something : ")
 	for {
@@ -26,8 +35,10 @@ func (this *User) SaytoAll() {
 		input, err := a.ReadString('\n')
 		if err == nil {
 			Now := time.Now().Month().String() + "/" + strconv.Itoa(time.Now().Day()) + " " + strconv.Itoa(time.Now().Hour()) + ":" + strconv.Itoa(time.Now().Minute()) + ":" + strconv.Itoa(time.Now().Second())
-			MassageNum, _ := this.ClientChat.GetMessNum(context.Background(), &pb.UserId{Id: this.Self.Id})
-			_, err2 := this.ClientChat.SendAll(context.Background(), &pb.Message{Id: MassageNum.Messnum,
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			MassageNum, _ := this.ClientChat.GetMessNum(ctx, &pb.UserId{Id: this.Self.Id})
+			_, err2 := this.ClientChat.SendAll(ctx, &pb.Message{Id: MassageNum.Messnum,
 				Content:     input,
 				Speakername: this.Self.Name,
 				Time:        Now,
@@ -64,14 +75,9 @@ func (this *User) GetMassFromName(speakername string) *pb.Message {
 	return find
 }
 func (this *User) GetAllMass() {
-	db_database := "chat_grpc"
-	db_username := "root"
-	db_password := "Tjq216828"
-	db_host := "127.0.0.1"
-	db_port := "3306"
 	db, err := sql.Open("mysql",
 		fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&timeout=5000ms",
-			db_username, db_password, db_host, db_port, db_database))
+			DB_username, DB_password, DB_host, DB_port, DB_database))
 	if err != nil {
 		fmt.Println("herr", err)
 	}
@@ -88,11 +94,23 @@ func (this *User) GetAllMass() {
 	fmt.Println("---------------------------------")
 }
 func main() {
-	conn1, err := grpc.Dial("127.0.0.1:8080", grpc.WithInsecure())
+	conn1, err := grpc.Dial("127.0.0.1"+Port, grpc.WithInsecure())
+	fmt.Println(conn1.Target())
 	if err != nil {
 		fmt.Println("Dial error : ", err)
 	}
+	if conn1 == nil {
+		fmt.Println("wrong")
+		return
+	}
+	defer func(conn1 *grpc.ClientConn) {
+		err := conn1.Close()
+		if err != nil {
+			fmt.Println("Failed to close the conn")
+		}
+	}(conn1)
 	cliC := pb.NewChatClient(conn1)
+	fmt.Println(conn1.GetState().String())
 	user := new(pb.User)
 	user.Id = 1
 	user.Name = "Sean"
@@ -107,7 +125,7 @@ func init() {
 	if err != nil {
 		fmt.Println("[orm] Register Driver error : ", err)
 	}
-	err = orm.RegisterDataBase("default", "mysql", "root:Tjq216828@tcp(127.0.0.1:3306)/chat_gRPC?charset=utf8")
+	err = orm.RegisterDataBase("default", "mysql", "sql_news:666@tcp(121.36.131.50:3306)/sql_news?charset=utf8")
 	if err != nil {
 		fmt.Println("[orm] Register Data Base error : ", err)
 	}

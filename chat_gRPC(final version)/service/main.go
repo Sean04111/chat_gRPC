@@ -8,18 +8,20 @@ import (
 	"net"
 )
 
+var Port string = ":8080"
+var MessageNum int = 100
+
 func main() {
+	fmt.Println("starting the server.....")
 	MassServer := new(server.MessageServer)
-	MassServer.Masseges = make([]*pb.Message, 50)
-	conn1, err := net.Listen("tcp", "127.0.0.1:8080")
+	MassServer.Masseges = make([]*pb.Message, MessageNum)
+	conn1, err := net.Listen("tcp", Port)
+
 	if err != nil {
 		fmt.Println("Listen error :", err)
 	}
 	m := grpc.NewServer()
 	pb.RegisterChatServer(m, MassServer)
-	err = m.Serve(conn1)
-	if err != nil {
-		fmt.Println("[server] Serve error : ", err)
-	}
-
+	err_ := m.Serve(conn1).Error()
+	fmt.Println(err_)
 }

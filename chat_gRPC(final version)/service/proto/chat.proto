@@ -1,5 +1,5 @@
 syntax="proto3";
-option go_package="github.com/Sean04111/chat_gRPC";
+option go_package="github.com/Sean04111/chat_gRPC(stream version)";
 package chat;
 message User{
   int64 id = 1;
