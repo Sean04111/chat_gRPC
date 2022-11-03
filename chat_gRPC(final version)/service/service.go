@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	pb "chat_gRPC/service/proto"
@@ -11,7 +11,7 @@ import (
 var Port string = ":8080"
 var MessageNum int = 100
 
-func main() {
+func RunService() {
 	fmt.Println("starting the server.....")
 	MassServer := new(server.MessageServer)
 	MassServer.Masseges = make([]*pb.Message, MessageNum)

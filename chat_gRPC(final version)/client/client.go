@@ -1,12 +1,12 @@
-package main
+package client
 
 import (
 	"bufio"
+	"chat_gRPC/service/model"
 	pb "chat_gRPC/service/proto"
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/beego/beego/v2/client/orm"
 	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 	"os"
@@ -19,6 +19,7 @@ type User struct {
 	Self       *pb.User
 }
 
+//you can set you database by these vars
 var (
 	DB_database string = "sql_news"
 	DB_username string = "sql_news"
@@ -26,7 +27,6 @@ var (
 	DB_host     string = "121.36.131.50"
 	DB_port     string = "3306"
 )
-var Port string = ":8080"
 
 func (this *User) SaytoAll() {
 	fmt.Println("Say something : ")
@@ -46,35 +46,22 @@ func (this *User) SaytoAll() {
 			if err2 != nil {
 				return
 			}
-			this.GetAllMass()
 		} else {
 			continue
 		}
 	}
 }
 func (this *User) GetMassFromId(id int) *pb.Message {
-	find := new(pb.Message)
-	o := orm.NewOrm()
-	qsu := o.QueryTable("messages")
-	_, err := qsu.Filter("message_id", id).All(find)
-	if err != nil {
-		fmt.Println("[orm] Filter error : ", err)
-		return nil
-	}
-	return find
+	var Re *pb.Message
+	return Re
 }
 func (this *User) GetMassFromName(speakername string) *pb.Message {
 	find := new(pb.Message)
-	o := orm.NewOrm()
-	qsu := o.QueryTable("messages")
-	_, err := qsu.Filter("speakername", speakername).All(find)
-	if err != nil {
-		fmt.Println("[orm] Filter error : ", err)
-		return nil
-	}
+
 	return find
 }
-func (this *User) GetAllMass() {
+func (this *User) GetAllMass(maxnum int) []model.Messages {
+	var Re []model.Messages
 	db, err := sql.Open("mysql",
 		fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&timeout=5000ms",
 			DB_username, DB_password, DB_host, DB_port, DB_database))
@@ -82,19 +69,30 @@ func (this *User) GetAllMass() {
 		fmt.Println("herr", err)
 	}
 	defer db.Close()
-	fmt.Println("-------------聊天框--------------")
-	for i := 1; i < 10; i++ {
-		var kv pb.Message
-		err = db.QueryRow("SELECT message_id, speakername, content, time FROM messages where message_id = ? ", i).Scan(&kv.Id, &kv.Speakername, &kv.Content, &kv.Time)
+	for i := 1; i <= maxnum; i++ {
+		var kv model.Messages
+		err = db.QueryRow("SELECT message_id, speakername, content, time FROM messages where message_id = ? ", i).Scan(&kv.MessageId, &kv.SpeakerName, &kv.Content, &kv.Time)
 		if err != nil {
 			continue
 		}
-		fmt.Println("["+kv.Speakername+"]", " : ", kv.Content, " @", kv.Time)
+		Re = append(Re, kv)
 	}
-	fmt.Println("---------------------------------")
+	return Re
 }
+
+func NewUser(id int, name string, grpcclientconn *grpc.ClientConn) *User {
+	Sean := new(User)
+	self := new(pb.User)
+	self.Id = int64(id)
+	self.Name = name
+	Sean.Self = self
+	cliC := pb.NewChatClient(grpcclientconn)
+	Sean.ClientChat = cliC
+	return Sean
+}
+
 func main() {
-	conn1, err := grpc.Dial("127.0.0.1"+Port, grpc.WithInsecure())
+	conn1, err := grpc.Dial("127.0.0.1:8080", grpc.WithInsecure())
 	fmt.Println(conn1.Target())
 	if err != nil {
 		fmt.Println("Dial error : ", err)
@@ -109,30 +107,6 @@ func main() {
 			fmt.Println("Failed to close the conn")
 		}
 	}(conn1)
-	cliC := pb.NewChatClient(conn1)
-	fmt.Println(conn1.GetState().String())
-	user := new(pb.User)
-	user.Id = 1
-	user.Name = "Sean"
-	Sean := new(User)
-	Sean.ClientChat = cliC
-	Sean.Self = user
-	Sean.SaytoAll()
-}
-
-func init() {
-	err := orm.RegisterDriver("mysql", orm.DRMySQL)
-	if err != nil {
-		fmt.Println("[orm] Register Driver error : ", err)
-	}
-	err = orm.RegisterDataBase("default", "mysql", "sql_news:666@tcp(121.36.131.50:3306)/sql_news?charset=utf8")
-	if err != nil {
-		fmt.Println("[orm] Register Data Base error : ", err)
-	}
-	/*
-		err = orm.RunSyncdb("default", true, false)
-		if err != nil {
-			fmt.Println("[orm] Create Table error : ", err)
-		}
-	*/
+	s := NewUser(12, "Atoi", conn1)
+	fmt.Println(s.GetAllMass(2))
 }
